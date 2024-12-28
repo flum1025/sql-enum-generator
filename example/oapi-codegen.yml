@@ -1,0 +1,8 @@
+package: main
+output: ./example/openapi.generated.go
+generate:
+  models: true
+compatibility:
+  always-prefix-enum-values: true
+output-options:
+  skip-prune: true
