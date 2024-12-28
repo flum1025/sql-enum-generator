@@ -65,7 +65,7 @@ func (p *PostgresParser) Parse(
 						case *pg_query.A_Const_Bsval:
 							return val.Bsval.Bsval
 						default:
-							panic("unknown const node")
+							return "NULL"
 						}
 					},
 				)
