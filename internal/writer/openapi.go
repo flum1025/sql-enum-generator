@@ -6,7 +6,6 @@ import (
 
 	"github.com/flum1025/sql-enum-generator/internal/entity"
 	"github.com/flum1025/sql-enum-generator/internal/parser"
-	"github.com/k0kubun/pp"
 	"github.com/samber/lo"
 	"github.com/swaggest/openapi-go/openapi3"
 )
