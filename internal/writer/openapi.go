@@ -6,6 +6,7 @@ import (
 
 	"github.com/flum1025/sql-enum-generator/internal/entity"
 	"github.com/flum1025/sql-enum-generator/internal/parser"
+	"github.com/k0kubun/pp"
 	"github.com/samber/lo"
 	"github.com/swaggest/openapi-go/openapi3"
 )
@@ -53,11 +54,16 @@ func (w *OpenAPIWriter) Write(
 
 					return table.Name, openapi3.SchemaOrRef{
 						Schema: &openapi3.Schema{
-							Type: lo.ToPtr(openapi3.SchemaTypeString),
-							Enum: lo.Map(
+							Type: lo.ToPtr(openapi3.SchemaTypeObject),
+							Properties: lo.SliceToMap(
 								def.Rows,
-								func(row parser.Row, _ int) any {
-									return fmt.Sprintf("%s", row[table.Key])
+								func(row parser.Row) (string, openapi3.SchemaOrRef) {
+									return row[table.Key], openapi3.SchemaOrRef{
+										Schema: &openapi3.Schema{
+											Type: lo.ToPtr(openapi3.SchemaTypeString),
+											Enum: []any{row[table.Value]},
+										},
+									}
 								},
 							),
 						},
