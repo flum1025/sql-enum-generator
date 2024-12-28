@@ -11,23 +11,23 @@ import (
 	"github.com/flum1025/sql-enum-generator/internal/writer"
 )
 
-type App struct {
+type SchemaGenerator struct {
 	engine     entity.Engine
 	config     entity.Config
 	source     string
 	outputPath string
 }
 
-type Option struct {
+type SchemaGeneratorOption struct {
 	Engine     entity.Engine
 	ConfigPath string
 	SourcePath string
 	OutputPath string
 }
 
-func New(
-	option Option,
-) (*App, error) {
+func NewSchemaGenerator(
+	option SchemaGeneratorOption,
+) (*SchemaGenerator, error) {
 	config, err := entity.NewConfigFromFile(option.ConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("new config from file: %w", err)
@@ -38,7 +38,7 @@ func New(
 		return nil, fmt.Errorf("load sources: %w", err)
 	}
 
-	return &App{
+	return &SchemaGenerator{
 		engine:     option.Engine,
 		config:     config,
 		source:     source,
@@ -46,7 +46,7 @@ func New(
 	}, nil
 }
 
-func (a *App) Run() error {
+func (a *SchemaGenerator) Run() error {
 	_parser := func() parser.Parser {
 		if a.engine == entity.EnginePostgres {
 			return &parser.PostgresParser{}

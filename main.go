@@ -50,7 +50,7 @@ func main() {
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					a, err := app.New(app.Option{
+					a, err := app.NewSchemaGenerator(app.SchemaGeneratorOption{
 						Engine:     lo.Must(entity.NewEngine(cmd.String("engine"))),
 						ConfigPath: cmd.String("config"),
 						SourcePath: cmd.String("source-path"),
@@ -60,7 +60,7 @@ func main() {
 						return fmt.Errorf("new: %w", err)
 					}
 
-					if err := a.Run(); err != nil {
+					if err := a.Generate(); err != nil {
 						return fmt.Errorf("run: %w", err)
 					}
 
