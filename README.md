@@ -29,6 +29,8 @@ $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example
 
 3. **Utilize language-specific generation tools** to create enums from the generated OpenAPI schema.
 
+For actual generation examples, please refer to the `example` directory in the repository.
+
 ## Language-Specific Usage Examples
 
 ### Go
