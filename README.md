@@ -1,6 +1,8 @@
 # sql-enum-generator
 
-sql-enum-generator is a tool that converts SQL INSERT statements into OpenAPI schema files. This application enables developers to easily convert database master data into API specifications, streamlining the development process.
+sql-enum-generator is a tool that converts SQL INSERT statements for master data into OpenAPI schemas. This application enables developers to easily generate enum representations of database master data using OpenAPI specifications, streamlining the development process and ensuring consistency between the database and application code.
+
+Currently only postgresql is supported.
 
 ## Features
 
@@ -57,6 +59,10 @@ For TypeScript, you can use [openapi-typescript](https://github.com/openapi-ts/o
 ```sh
 $ npx openapi-typescript ./example/openapi.generated.json -o ./example/openapi.generated.d.ts --enum
 ```
+
+## Future Plans
+
+- [] Add support for additional SQL dialects
 
 ## License
 
