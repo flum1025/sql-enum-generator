@@ -62,7 +62,7 @@ $ npx openapi-typescript ./example/openapi.generated.json -o ./example/openapi.g
 
 ## Future Plans
 
-- [] Add support for additional SQL dialects
+- [ ] Add support for additional SQL dialects
 
 ## License
 
