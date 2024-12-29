@@ -60,7 +60,52 @@ func main() {
 						return fmt.Errorf("new: %w", err)
 					}
 
-					if err := a.Generate(); err != nil {
+					if err := a.Run(); err != nil {
+						return fmt.Errorf("run: %w", err)
+					}
+
+					return nil
+				},
+			},
+			{
+				Name: "query-generate",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "engine",
+						Value: entity.EnginePostgres.String(),
+						Action: func(_ context.Context, _ *cli.Command, value string) error {
+							if _, err := entity.NewEngine(value); err != nil {
+								return fmt.Errorf("invalid engine: %w", err)
+							}
+
+							return nil
+						},
+					},
+					&cli.StringFlag{
+						Name:  "config",
+						Value: "sqlenumgen.yml",
+					},
+					&cli.StringFlag{
+						Name:     "output-path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "database-url",
+						Required: true,
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					a, err := app.NewQueryGenerator(app.QueryGeneratorOption{
+						Engine:      lo.Must(entity.NewEngine(cmd.String("engine"))),
+						ConfigPath:  cmd.String("config"),
+						OutputPath:  cmd.String("output-path"),
+						DatabaseURL: cmd.String("database-url"),
+					})
+					if err != nil {
+						return fmt.Errorf("new: %w", err)
+					}
+
+					if err := a.Run(); err != nil {
 						return fmt.Errorf("run: %w", err)
 					}
 
