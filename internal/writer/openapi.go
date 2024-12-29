@@ -53,18 +53,21 @@ func (w *OpenAPIWriter) Write(
 
 					return table.Name, openapi3.SchemaOrRef{
 						Schema: &openapi3.Schema{
-							Type: lo.ToPtr(openapi3.SchemaTypeObject),
-							Properties: lo.SliceToMap(
+							Type: lo.ToPtr(openapi3.SchemaTypeString),
+							Enum: lo.Map(
 								def.Rows,
-								func(row parser.Row) (string, openapi3.SchemaOrRef) {
-									return row[table.Key], openapi3.SchemaOrRef{
-										Schema: &openapi3.Schema{
-											Type: lo.ToPtr(openapi3.SchemaTypeString),
-											Enum: []any{row[table.Value]},
-										},
-									}
+								func(row parser.Row, _ int) any {
+									return fmt.Sprintf("%s", row[table.Value])
 								},
 							),
+							MapOfAnything: map[string]any{
+								"x-enum-varnames": lo.Map(
+									def.Rows,
+									func(row parser.Row, _ int) any {
+										return fmt.Sprintf("%s", row[table.Key])
+									},
+								),
+							},
 						},
 					}
 				},

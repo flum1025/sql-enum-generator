@@ -7,14 +7,8 @@ export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        products: {
-            /** @enum {string} */
-            ProductA?: ProductsProductA;
-            /** @enum {string} */
-            ProductB?: ProductsProductB;
-            /** @enum {string} */
-            ProductC?: ProductsProductC;
-        };
+        /** @enum {string} */
+        products: Products;
     };
     responses: never;
     parameters: never;
@@ -23,13 +17,9 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export enum ProductsProductA {
-    Value1 = "1"
-}
-export enum ProductsProductB {
-    Value2 = "2"
-}
-export enum ProductsProductC {
-    Value3 = "3"
+export enum Products {
+    ProductA = "1",
+    ProductB = "2",
+    ProductC = "3"
 }
 export type operations = Record<string, never>;
