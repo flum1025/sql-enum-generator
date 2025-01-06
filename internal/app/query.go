@@ -133,6 +133,8 @@ func (a *QueryGenerator) transform(
 					return fmt.Sprintf("'%s'", value)
 				case int64:
 					return fmt.Sprintf("%d", value)
+				case bool:
+					return fmt.Sprintf("%t", value)
 				case time.Time:
 					return fmt.Sprintf("'%s'", value.Format(time.RFC3339))
 				case nil:
