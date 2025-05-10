@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/pganalyze/pg_query_go/v6 v6.0.0
+	github.com/pganalyze/pg_query_go/v6 v6.1.0
 	github.com/samber/lo v1.47.0
 	github.com/swaggest/openapi-go v0.2.54
 	github.com/urfave/cli/v3 v3.0.0-beta1
@@ -23,5 +23,5 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/protobuf v1.36.1 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 )
