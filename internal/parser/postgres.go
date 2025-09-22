@@ -42,12 +42,17 @@ func (p *PostgresParser) Parse(
 			},
 		)
 
+		type columnValue struct {
+			value string
+			typ   RowType
+		}
+
 		lists := lo.Map(
 			insertStmt.SelectStmt.GetSelectStmt().GetValuesLists(),
-			func(list *pg_query.Node, _ int) []string {
+			func(list *pg_query.Node, _ int) []columnValue {
 				return lo.Map(
 					list.GetList().Items,
-					func(item *pg_query.Node, _ int) string {
+					func(item *pg_query.Node, _ int) columnValue {
 						node := item.GetAConst()
 						if node == nil {
 							panic("not a const node")
@@ -55,17 +60,35 @@ func (p *PostgresParser) Parse(
 
 						switch val := node.GetVal().(type) {
 						case *pg_query.A_Const_Ival:
-							return strconv.FormatInt(int64(val.Ival.Ival), 10)
+							return columnValue{
+								value: strconv.FormatInt(int64(val.Ival.Ival), 10),
+								typ:   RowTypeInteger,
+							}
 						case *pg_query.A_Const_Fval:
-							return val.Fval.Fval
+							return columnValue{
+								value: val.Fval.Fval,
+								typ:   RowTypeString,
+							}
 						case *pg_query.A_Const_Boolval:
-							return strconv.FormatBool(val.Boolval.Boolval)
+							return columnValue{
+								value: strconv.FormatBool(val.Boolval.Boolval),
+								typ:   RowTypeString,
+							}
 						case *pg_query.A_Const_Sval:
-							return val.Sval.Sval
+							return columnValue{
+								value: val.Sval.Sval,
+								typ:   RowTypeString,
+							}
 						case *pg_query.A_Const_Bsval:
-							return val.Bsval.Bsval
+							return columnValue{
+								value: string(val.Bsval.Bsval),
+								typ:   RowTypeString,
+							}
 						default:
-							return "NULL"
+							return columnValue{
+								value: "",
+								typ:   RowTypeUnknown,
+							}
 						}
 					},
 				)
@@ -74,17 +97,16 @@ func (p *PostgresParser) Parse(
 
 		rows := lo.Map(
 			lists,
-			func(list []string, _ int) Row {
-				return lo.FromEntries(
-					lo.Map(
-						lo.Zip2(cols, list),
-						func(tuple lo.Tuple2[string, string], _ int) lo.Entry[string, string] {
-							return lo.Entry[string, string]{
-								Key:   tuple.A,
-								Value: tuple.B,
-							}
-						},
-					),
+			func(list []columnValue, _ int) Row {
+				return lo.Map(
+					lo.Zip2(cols, list),
+					func(tuple lo.Tuple2[string, columnValue], _ int) Column {
+						return Column{
+							Name:  tuple.A,
+							Type:  tuple.B.typ,
+							Value: tuple.B.value,
+						}
+					},
 				)
 			},
 		)

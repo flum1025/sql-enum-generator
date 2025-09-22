@@ -50,23 +50,25 @@ func (w *OpenAPIWriter) Write(
 				w.targetSchemaTables,
 				func(table entity.SchemaTable) (string, openapi3.SchemaOrRef) {
 					def := nameToTable[table.Name]
+					enumDef := def.Rows.ToEnum(table)
 
-					return table.Name, openapi3.SchemaOrRef{
+					schemaType := func() openapi3.SchemaType {
+						switch enumDef.ValueType {
+						case parser.RowTypeInteger:
+							return openapi3.SchemaTypeInteger
+						case parser.RowTypeString:
+							return openapi3.SchemaTypeString
+						default:
+							return openapi3.SchemaTypeString
+						}
+					}()
+
+					return enumDef.Name, openapi3.SchemaOrRef{
 						Schema: &openapi3.Schema{
-							Type: lo.ToPtr(openapi3.SchemaTypeString),
-							Enum: lo.Map(
-								def.Rows,
-								func(row parser.Row, _ int) any {
-									return fmt.Sprintf("%s", row[table.Value])
-								},
-							),
+							Type: lo.ToPtr(schemaType),
+							Enum: lo.ToAnySlice(enumDef.Values),
 							MapOfAnything: map[string]any{
-								"x-enum-varnames": lo.Map(
-									def.Rows,
-									func(row parser.Row, _ int) any {
-										return fmt.Sprintf("%s", row[table.Key])
-									},
-								),
+								"x-enum-varnames": lo.ToAnySlice(enumDef.Keys),
 							},
 						},
 					}
