@@ -8,6 +8,8 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
+        menus: Menus;
+        /** @enum {integer} */
         products: Products;
     };
     responses: never;
@@ -17,6 +19,11 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
+export enum Menus {
+    MenusA = "1",
+    MenusB = "2",
+    MenusC = "3"
+}
 export enum Products {
     ProductA = "1",
     ProductB = "2",

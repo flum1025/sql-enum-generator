@@ -1,8 +1,9 @@
 module github.com/flum1025/sql-enum-generator
 
-go 1.23.0
+go 1.25.1
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/pganalyze/pg_query_go/v6 v6.1.0
 	github.com/samber/lo v1.47.0
