@@ -42,9 +42,9 @@ func NewSchemaGenerator(
 
 	var schema string
 
-	if len(config.IDs) > 0 {
+	if config.HasIDType() {
 		if option.SchemaPath == "" {
-			return nil, fmt.Errorf("schema path is required when ids are configured")
+			return nil, fmt.Errorf("schema path is required when id_type is configured")
 		}
 
 		schema, err = loadSources(option.SchemaPath)
@@ -74,7 +74,7 @@ func (a *SchemaGenerator) Run() error {
 		return fmt.Errorf("unknown engine: %s", a.engine)
 	}
 
-	writer := writer.NewOpenAPIWriter(a.config.Tables, a.outputPath)
+	writer := writer.NewOpenAPIWriter(a.config.EnumTables(), a.outputPath)
 
 	tables, err := _parser.Parse(a.source)
 	if err != nil {
@@ -96,7 +96,7 @@ func (a *SchemaGenerator) Run() error {
 func (a *SchemaGenerator) parseIDs(
 	_parser parser.Parser,
 ) ([]parser.ID, error) {
-	if len(a.config.IDs) == 0 {
+	if !a.config.HasIDType() {
 		return nil, nil
 	}
 
@@ -105,9 +105,13 @@ func (a *SchemaGenerator) parseIDs(
 		return nil, fmt.Errorf("parse definitions: %w", err)
 	}
 
-	ids := make([]parser.ID, 0, len(a.config.IDs))
+	ids := make([]parser.ID, 0, len(a.config.Tables))
 
-	for _, def := range a.config.IDs {
+	for _, def := range a.config.Tables {
+		if !def.HasIDType() {
+			continue
+		}
+
 		id, err := definitions.ToID(def)
 		if err != nil {
 			return nil, fmt.Errorf("to id: %w", err)

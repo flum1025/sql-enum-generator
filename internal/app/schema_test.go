@@ -59,7 +59,7 @@ func TestNewSchemaGenerator_RequiresSchemaPathForIDs(t *testing.T) {
 		SourcePath: "../../example/master.sql",
 		OutputPath: filepath.Join(t.TempDir(), "openapi.generated.json"),
 	})
-	if err == nil || !strings.Contains(err.Error(), "schema path is required when ids are configured") {
+	if err == nil || !strings.Contains(err.Error(), "schema path is required when id_type is configured") {
 		t.Fatalf("NewSchemaGenerator() error = %v", err)
 	}
 }

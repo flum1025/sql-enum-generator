@@ -13,7 +13,7 @@ func TestPostgresParser_ParseDefinitions_ToID(t *testing.T) {
 	tests := []struct {
 		name    string
 		source  string
-		def     entity.IDTable
+		def     entity.SchemaTable
 		want    ID
 		wantErr string
 	}{
@@ -24,7 +24,7 @@ func TestPostgresParser_ParseDefinitions_ToID(t *testing.T) {
   "name" CHARACTER VARYING (32) NOT NULL,
   PRIMARY KEY ("id")
 );`,
-			def:  entity.IDTable{Table: "clinics", Name: "ClinicID"},
+			def:  entity.SchemaTable{Name: "clinics", IDType: "ClinicID"},
 			want: ID{Name: "ClinicID", Table: "clinics", Type: IDTypeUUID},
 		},
 		{
@@ -34,43 +34,43 @@ func TestPostgresParser_ParseDefinitions_ToID(t *testing.T) {
   "name" CHARACTER VARYING (32) NOT NULL,
   PRIMARY KEY ("id")
 );`,
-			def:  entity.IDTable{Table: "richmenu_types", Name: "RichMenuTypeID"},
+			def:  entity.SchemaTable{Name: "richmenu_types", IDType: "RichMenuTypeID"},
 			want: ID{Name: "RichMenuTypeID", Table: "richmenu_types", Type: IDTypeInt32},
 		},
 		{
 			name:   "integer",
 			source: `CREATE TABLE products (id integer NOT NULL, PRIMARY KEY (id));`,
-			def:    entity.IDTable{Table: "products", Name: "ProductID"},
+			def:    entity.SchemaTable{Name: "products", IDType: "ProductID"},
 			want:   ID{Name: "ProductID", Table: "products", Type: IDTypeInt32},
 		},
 		{
 			name:   "bigint",
 			source: `CREATE TABLE events (id BIGINT NOT NULL, PRIMARY KEY (id));`,
-			def:    entity.IDTable{Table: "events", Name: "EventID"},
+			def:    entity.SchemaTable{Name: "events", IDType: "EventID"},
 			want:   ID{Name: "EventID", Table: "events", Type: IDTypeInt64},
 		},
 		{
 			name:   "bigserial",
 			source: `CREATE TABLE events (id BIGSERIAL NOT NULL, PRIMARY KEY (id));`,
-			def:    entity.IDTable{Table: "events", Name: "EventID"},
+			def:    entity.SchemaTable{Name: "events", IDType: "EventID"},
 			want:   ID{Name: "EventID", Table: "events", Type: IDTypeInt64},
 		},
 		{
 			name:   "unquoted and not schema qualified",
 			source: `CREATE TABLE clinics (id uuid NOT NULL, PRIMARY KEY (id));`,
-			def:    entity.IDTable{Table: "clinics", Name: "ClinicID"},
+			def:    entity.SchemaTable{Name: "clinics", IDType: "ClinicID"},
 			want:   ID{Name: "ClinicID", Table: "clinics", Type: IDTypeUUID},
 		},
 		{
 			name:   "schema qualified without quotes",
 			source: `CREATE TABLE public.clinics (id uuid NOT NULL, PRIMARY KEY (id));`,
-			def:    entity.IDTable{Table: "clinics", Name: "ClinicID"},
+			def:    entity.SchemaTable{Name: "clinics", IDType: "ClinicID"},
 			want:   ID{Name: "ClinicID", Table: "clinics", Type: IDTypeUUID},
 		},
 		{
 			name:   "column level primary key",
 			source: `CREATE TABLE "public"."users" ("id" UUID PRIMARY KEY DEFAULT gen_random_uuid(), "name" TEXT);`,
-			def:    entity.IDTable{Table: "users", Name: "UserID"},
+			def:    entity.SchemaTable{Name: "users", IDType: "UserID"},
 			want:   ID{Name: "UserID", Table: "users", Type: IDTypeUUID},
 		},
 		{
@@ -79,31 +79,31 @@ func TestPostgresParser_ParseDefinitions_ToID(t *testing.T) {
 CREATE TABLE "public"."users" ("id" UUID NOT NULL, PRIMARY KEY ("id"));
 CREATE TABLE "public"."menus" ("id" SERIAL NOT NULL, PRIMARY KEY ("id"));
 ALTER TABLE "public"."menus" ADD CONSTRAINT "menus_id_key" UNIQUE (id);`,
-			def:  entity.IDTable{Table: "menus", Name: "MenuID"},
+			def:  entity.SchemaTable{Name: "menus", IDType: "MenuID"},
 			want: ID{Name: "MenuID", Table: "menus", Type: IDTypeInt32},
 		},
 		{
 			name:    "composite primary key",
 			source:  `CREATE TABLE "public"."user_clinics" ("user_id" UUID NOT NULL, "clinic_id" UUID NOT NULL, PRIMARY KEY ("user_id", "clinic_id"));`,
-			def:     entity.IDTable{Table: "user_clinics", Name: "UserClinicID"},
+			def:     entity.SchemaTable{Name: "user_clinics", IDType: "UserClinicID"},
 			wantErr: "table user_clinics must have exactly one primary key column, got 2",
 		},
 		{
 			name:    "no primary key",
 			source:  `CREATE TABLE logs (message TEXT);`,
-			def:     entity.IDTable{Table: "logs", Name: "LogID"},
+			def:     entity.SchemaTable{Name: "logs", IDType: "LogID"},
 			wantErr: "table logs must have exactly one primary key column, got 0",
 		},
 		{
 			name:    "missing table",
 			source:  `CREATE TABLE clinics (id uuid NOT NULL, PRIMARY KEY (id));`,
-			def:     entity.IDTable{Table: "users", Name: "UserID"},
+			def:     entity.SchemaTable{Name: "users", IDType: "UserID"},
 			wantErr: "table not found: users",
 		},
 		{
 			name:    "unsupported type",
 			source:  `CREATE TABLE codes (code CHARACTER VARYING (8) NOT NULL, PRIMARY KEY (code));`,
-			def:     entity.IDTable{Table: "codes", Name: "CodeID"},
+			def:     entity.SchemaTable{Name: "codes", IDType: "CodeID"},
 			wantErr: "table codes column code: unsupported primary key type: varchar",
 		},
 	}

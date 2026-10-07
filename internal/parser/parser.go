@@ -121,28 +121,28 @@ type TableDefinition struct {
 
 type TableDefinitions []TableDefinition
 
-func (t TableDefinitions) ToID(def entity.IDTable) (ID, error) {
+func (t TableDefinitions) ToID(def entity.SchemaTable) (ID, error) {
 	table, ok := lo.Find(t, func(table TableDefinition) bool {
-		return table.Name == def.Table
+		return table.Name == def.Name
 	})
 	if !ok {
-		return ID{}, fmt.Errorf("table not found: %s", def.Table)
+		return ID{}, fmt.Errorf("table not found: %s", def.Name)
 	}
 
 	if len(table.PrimaryKeys) != 1 {
-		return ID{}, fmt.Errorf("table %s must have exactly one primary key column, got %d", def.Table, len(table.PrimaryKeys))
+		return ID{}, fmt.Errorf("table %s must have exactly one primary key column, got %d", def.Name, len(table.PrimaryKeys))
 	}
 
 	pk := table.PrimaryKeys[0]
 
 	idType, err := toIDType(pk.TypeName)
 	if err != nil {
-		return ID{}, fmt.Errorf("table %s column %s: %w", def.Table, pk.Name, err)
+		return ID{}, fmt.Errorf("table %s column %s: %w", def.Name, pk.Name, err)
 	}
 
 	return ID{
-		Name:  def.Name,
-		Table: def.Table,
+		Name:  def.IDType,
+		Table: def.Name,
 		Type:  idType,
 	}, nil
 }
