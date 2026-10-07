@@ -29,11 +29,19 @@ func NewOpenAPIWriter(
 
 func (w *OpenAPIWriter) Write(
 	tables []parser.Table,
+	ids []parser.ID,
 ) error {
 	nameToTable := lo.SliceToMap(
 		tables,
 		func(table parser.Table) (string, parser.Table) {
 			return table.Name, table
+		},
+	)
+
+	tableToID := lo.SliceToMap(
+		ids,
+		func(id parser.ID) (string, parser.ID) {
+			return id.Table, id
 		},
 	)
 
@@ -63,18 +71,42 @@ func (w *OpenAPIWriter) Write(
 						}
 					}()
 
+					extensions := map[string]any{
+						"x-enum-varnames": lo.ToAnySlice(enumDef.Keys),
+					}
+
+					if id, ok := tableToID[table.Name]; ok {
+						extensions["x-id-type"] = id.Name
+					}
+
 					return enumDef.Name, openapi3.SchemaOrRef{
 						Schema: &openapi3.Schema{
-							Type: lo.ToPtr(schemaType),
-							Enum: lo.ToAnySlice(enumDef.Values),
-							MapOfAnything: map[string]any{
-								"x-enum-varnames": lo.ToAnySlice(enumDef.Keys),
-							},
+							Type:          lo.ToPtr(schemaType),
+							Enum:          lo.ToAnySlice(enumDef.Values),
+							MapOfAnything: extensions,
 						},
 					}
 				},
 			),
 		},
+	}
+
+	for _, id := range ids {
+		if _, ok := spec.Components.Schemas.MapOfSchemaOrRefValues[id.Name]; ok {
+			return fmt.Errorf("duplicate schema name: %s", id.Name)
+		}
+
+		schemaType, format := idSchemaType(id.Type)
+
+		spec.Components.Schemas.MapOfSchemaOrRefValues[id.Name] = openapi3.SchemaOrRef{
+			Schema: &openapi3.Schema{
+				Type:   lo.ToPtr(schemaType),
+				Format: lo.ToPtr(format),
+				MapOfAnything: map[string]any{
+					"x-id": true,
+				},
+			},
+		}
 	}
 
 	bytes, err := spec.MarshalJSON()
@@ -87,4 +119,15 @@ func (w *OpenAPIWriter) Write(
 	}
 
 	return nil
+}
+
+func idSchemaType(idType parser.IDType) (openapi3.SchemaType, string) {
+	switch idType {
+	case parser.IDTypeInt32:
+		return openapi3.SchemaTypeInteger, "int32"
+	case parser.IDTypeInt64:
+		return openapi3.SchemaTypeInteger, "int64"
+	default:
+		return openapi3.SchemaTypeString, "uuid"
+	}
 }

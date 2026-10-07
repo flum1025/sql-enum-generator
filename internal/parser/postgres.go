@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 
 	pg_query "github.com/pganalyze/pg_query_go/v6"
@@ -118,4 +119,89 @@ func (p *PostgresParser) Parse(
 	}
 
 	return tables, nil
+}
+
+func (p *PostgresParser) ParseDefinitions(
+	source string,
+) (TableDefinitions, error) {
+	tree, err := pg_query.Parse(source)
+	if err != nil {
+		return nil, err
+	}
+
+	definitions := make(TableDefinitions, 0, len(tree.Stmts))
+
+	for _, stmt := range tree.Stmts {
+		createStmt := stmt.Stmt.GetCreateStmt()
+		if createStmt == nil {
+			continue
+		}
+
+		columns := make([]ColumnDefinition, 0, len(createStmt.TableElts))
+		primaryKeyNames := make([]string, 0)
+
+		for _, elt := range createStmt.TableElts {
+			if columnDef := elt.GetColumnDef(); columnDef != nil {
+				columns = append(columns, ColumnDefinition{
+					Name:     columnDef.Colname,
+					TypeName: typeName(columnDef.TypeName),
+				})
+
+				if lo.SomeBy(columnDef.Constraints, isPrimaryKeyConstraint) {
+					primaryKeyNames = append(primaryKeyNames, columnDef.Colname)
+				}
+
+				continue
+			}
+
+			if isPrimaryKeyConstraint(elt) {
+				primaryKeyNames = append(
+					primaryKeyNames,
+					lo.Map(
+						elt.GetConstraint().Keys,
+						func(key *pg_query.Node, _ int) string {
+							return key.GetString_().Sval
+						},
+					)...,
+				)
+			}
+		}
+
+		primaryKeys := make([]ColumnDefinition, 0, len(primaryKeyNames))
+
+		for _, name := range primaryKeyNames {
+			column, ok := lo.Find(columns, func(c ColumnDefinition) bool {
+				return c.Name == name
+			})
+			if !ok {
+				return nil, fmt.Errorf("primary key column not found: %s.%s", createStmt.Relation.Relname, name)
+			}
+
+			primaryKeys = append(primaryKeys, column)
+		}
+
+		definitions = append(definitions, TableDefinition{
+			Name:        createStmt.Relation.Relname,
+			PrimaryKeys: primaryKeys,
+		})
+	}
+
+	return definitions, nil
+}
+
+func isPrimaryKeyConstraint(node *pg_query.Node) bool {
+	constraint := node.GetConstraint()
+
+	return constraint != nil && constraint.Contype == pg_query.ConstrType_CONSTR_PRIMARY
+}
+
+func typeName(typeName *pg_query.TypeName) string {
+	names := lo.Map(
+		typeName.GetNames(),
+		func(name *pg_query.Node, _ int) string {
+			return name.GetString_().Sval
+		},
+	)
+
+	return lo.LastOrEmpty(names)
 }

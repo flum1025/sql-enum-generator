@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/flum1025/sql-enum-generator/internal/entity"
 	"github.com/samber/lo"
 )
@@ -9,6 +12,9 @@ type Parser interface {
 	Parse(
 		source string,
 	) ([]Table, error)
+	ParseDefinitions(
+		source string,
+	) (TableDefinitions, error)
 }
 
 type RowType string
@@ -87,4 +93,69 @@ func (e Enum) IsEmpty() bool {
 type Table struct {
 	Name string
 	Rows Rows
+}
+
+type IDType string
+
+const (
+	IDTypeUUID  IDType = "uuid"
+	IDTypeInt32 IDType = "int32"
+	IDTypeInt64 IDType = "int64"
+)
+
+type ID struct {
+	Name  string
+	Table string
+	Type  IDType
+}
+
+type ColumnDefinition struct {
+	Name     string
+	TypeName string
+}
+
+type TableDefinition struct {
+	Name        string
+	PrimaryKeys []ColumnDefinition
+}
+
+type TableDefinitions []TableDefinition
+
+func (t TableDefinitions) ToID(def entity.IDTable) (ID, error) {
+	table, ok := lo.Find(t, func(table TableDefinition) bool {
+		return table.Name == def.Table
+	})
+	if !ok {
+		return ID{}, fmt.Errorf("table not found: %s", def.Table)
+	}
+
+	if len(table.PrimaryKeys) != 1 {
+		return ID{}, fmt.Errorf("table %s must have exactly one primary key column, got %d", def.Table, len(table.PrimaryKeys))
+	}
+
+	pk := table.PrimaryKeys[0]
+
+	idType, err := toIDType(pk.TypeName)
+	if err != nil {
+		return ID{}, fmt.Errorf("table %s column %s: %w", def.Table, pk.Name, err)
+	}
+
+	return ID{
+		Name:  def.Name,
+		Table: def.Table,
+		Type:  idType,
+	}, nil
+}
+
+func toIDType(typeName string) (IDType, error) {
+	switch strings.ToLower(typeName) {
+	case "uuid":
+		return IDTypeUUID, nil
+	case "serial", "serial4", "integer", "int", "int4":
+		return IDTypeInt32, nil
+	case "bigserial", "serial8", "bigint", "int8":
+		return IDTypeInt64, nil
+	default:
+		return "", fmt.Errorf("unsupported primary key type: %s", typeName)
+	}
 }

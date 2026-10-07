@@ -45,6 +45,10 @@ func main() {
 						Required: true,
 					},
 					&cli.StringFlag{
+						Name:  "schema-path",
+						Usage: "DDL files used to resolve primary key types of ids. Wildcards can be used",
+					},
+					&cli.StringFlag{
 						Name:     "output-path",
 						Required: true,
 					},
@@ -54,6 +58,7 @@ func main() {
 						Engine:     lo.Must(entity.NewEngine(cmd.String("engine"))),
 						ConfigPath: cmd.String("config"),
 						SourcePath: cmd.String("source-path"),
+						SchemaPath: cmd.String("schema-path"),
 						OutputPath: cmd.String("output-path"),
 					})
 					if err != nil {

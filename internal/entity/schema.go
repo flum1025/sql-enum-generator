@@ -10,12 +10,18 @@ import (
 type Config struct {
 	Version string        `yaml:"version"`
 	Tables  []SchemaTable `yaml:"tables"`
+	IDs     []IDTable     `yaml:"ids"`
 }
 
 type SchemaTable struct {
 	Name  string `yaml:"name"`
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
+}
+
+type IDTable struct {
+	Table string `yaml:"table"`
+	Name  string `yaml:"name"`
 }
 
 func NewConfigFromFile(
