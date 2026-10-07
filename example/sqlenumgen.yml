@@ -3,11 +3,9 @@ tables:
   - name: products
     key: name
     value: id
+    id_type: ProductID
   - name: menus
     key: name
     value: id
-ids:
-  - table: products
-    name: ProductID
-  - table: users
-    name: UserID
+  - name: users
+    id_type: UserID

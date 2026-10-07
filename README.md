@@ -34,7 +34,7 @@ For actual generation examples, please refer to the `example` directory in the r
 
 ## ID Schemas
 
-Add `ids` to `sqlenumgen.yml` to generate ID schemas from the primary key of each table.
+Add `id_type` to an entry of `tables` to generate an ID schema from the primary key of the table.
 
 ```yaml
 version: "1"
@@ -42,19 +42,23 @@ tables:
   - name: products
     key: name
     value: id
-ids:
-  - table: products
-    name: ProductID
-  - table: users
-    name: UserID
+    id_type: ProductID
+  - name: menus
+    key: name
+    value: id
+  - name: users
+    id_type: UserID
 ```
 
 | Key | Description |
 | --- | --- |
-| `table` | Table name. Schema-qualified and quoted names in DDL (e.g. `"public"."users"`) are matched by table name |
-| `name` | Schema name to generate |
+| `name` | Table name. Schema-qualified and quoted names in DDL (e.g. `"public"."users"`) are matched by table name |
+| `key`, `value` | Columns for the enum. Optional, but must be specified together. Without them, no enum is generated and master data is not required |
+| `id_type` | ID schema name to generate. Optional |
 
-When `ids` is configured, pass the DDL files (CREATE TABLE statements) with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `ids` is not configured.
+Each entry requires `key` and `value`, or `id_type`.
+
+When `id_type` is configured, pass the DDL files (CREATE TABLE statements) with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `id_type` is not configured.
 
 ```sh
 $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example/master.sql --schema-path ./example/schema.sql --output-path ./example/openapi.generated.json --config ./example/sqlenumgen.yml
@@ -68,7 +72,7 @@ The primary key must be a single column (table-level `PRIMARY KEY (...)` or colu
 | `serial`, `integer` (`int`, `int4`) | `{"type": "integer", "format": "int32"}` |
 | `bigserial`, `bigint` (`int8`) | `{"type": "integer", "format": "int64"}` |
 
-Each ID schema has the `x-id: true` extension. When the table is also listed in `tables`, the enum schema has the `x-id-type` extension that refers to the ID schema name.
+Each ID schema has the `x-id: true` extension. When the entry also has `key` and `value`, the enum schema has the `x-id-type` extension that refers to the ID schema name.
 
 ```json
 {
