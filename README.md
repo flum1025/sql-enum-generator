@@ -7,6 +7,7 @@ Currently only postgresql is supported.
 ## Features
 
 - Parses SQL INSERT statements and generates corresponding OpenAPI schemas
+- Generates ID schemas whose type is resolved from the primary key column in CREATE TABLE statements
 - Generated OpenAPI schemas can be utilized with other tools for type generation
 
 ## Quick Start
@@ -31,6 +32,57 @@ $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example
 
 For actual generation examples, please refer to the `example` directory in the repository.
 
+## ID Schemas
+
+Add `ids` to `sqlenumgen.yml` to generate ID schemas from the primary key of each table.
+
+```yaml
+version: "1"
+tables:
+  - name: products
+    key: name
+    value: id
+ids:
+  - table: products
+    name: ProductID
+  - table: users
+    name: UserID
+```
+
+| Key | Description |
+| --- | --- |
+| `table` | Table name. Schema-qualified and quoted names in DDL (e.g. `"public"."users"`) are matched by table name |
+| `name` | Schema name to generate |
+
+When `ids` is configured, pass the DDL files (CREATE TABLE statements) with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `ids` is not configured.
+
+```sh
+$ go run github.com/flum1025/sql-enum-generator generate --source-path ./example/master.sql --schema-path ./example/schema.sql --output-path ./example/openapi.generated.json --config ./example/sqlenumgen.yml
+```
+
+The primary key must be a single column (table-level `PRIMARY KEY (...)` or column-level `PRIMARY KEY`), and its type is mapped as follows. Other types, composite primary keys, and missing tables result in an error.
+
+| Column type | Schema |
+| --- | --- |
+| `uuid` | `{"type": "string", "format": "uuid"}` |
+| `serial`, `integer` (`int`, `int4`) | `{"type": "integer", "format": "int32"}` |
+| `bigserial`, `bigint` (`int8`) | `{"type": "integer", "format": "int64"}` |
+
+Each ID schema has the `x-id: true` extension. When the table is also listed in `tables`, the enum schema has the `x-id-type` extension that refers to the ID schema name.
+
+```json
+{
+  "ProductID": { "type": "integer", "format": "int32", "x-id": true },
+  "UserID": { "type": "string", "format": "uuid", "x-id": true },
+  "products": {
+    "enum": ["1", "2", "3"],
+    "type": "integer",
+    "x-enum-varnames": ["ProductA", "ProductB", "ProductC"],
+    "x-id-type": "ProductID"
+  }
+}
+```
+
 ## Language-Specific Usage Examples
 
 ### Go
@@ -46,7 +98,14 @@ compatibility:
   always-prefix-enum-values: true
 output-options:
   skip-prune: true
+  type-mapping:
+    string:
+      formats:
+        uuid:
+          type: string
 ```
+
+`type-mapping` is optional. Without it, `format: uuid` is generated as `openapi_types.UUID` from `github.com/oapi-codegen/runtime`.
 
 Then, run the following command to generate the Go code:
 

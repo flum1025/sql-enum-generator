@@ -6,3 +6,8 @@ tables:
   - name: menus
     key: name
     value: id
+ids:
+  - table: products
+    name: ProductID
+  - table: users
+    name: UserID
