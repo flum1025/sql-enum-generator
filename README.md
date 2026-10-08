@@ -56,7 +56,10 @@ tables:
 | `key`, `value` | Columns for the enum. Optional, but must be specified together. Without them, no enum is generated and master data is not required |
 | `id_type` | ID schema name to generate. Optional |
 
-Each entry requires `key` and `value`, or `id_type`.
+The config is validated on load, and the following result in an error:
+
+- Only one of `key` and `value` is specified
+- Neither `key`/`value` nor `id_type` is specified
 
 When `id_type` is configured, pass the DDL files (CREATE TABLE statements) with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `id_type` is not configured.
 
@@ -64,13 +67,15 @@ When `id_type` is configured, pass the DDL files (CREATE TABLE statements) with 
 $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example/master.sql --schema-path ./example/schema.sql --output-path ./example/openapi.generated.json --config ./example/sqlenumgen.yml
 ```
 
-The primary key must be a single column (table-level `PRIMARY KEY (...)` or column-level `PRIMARY KEY`), and its type is mapped as follows. Other types, composite primary keys, and missing tables result in an error.
+The primary key is read from table-level `PRIMARY KEY (...)` or column-level `PRIMARY KEY`, and its type is mapped as follows.
 
 | Column type | Schema |
 | --- | --- |
 | `uuid` | `{"type": "string", "format": "uuid"}` |
-| `serial`, `integer` (`int`, `int4`) | `{"type": "integer", "format": "int32"}` |
-| `bigserial`, `bigint` (`int8`) | `{"type": "integer", "format": "int64"}` |
+| `int`, `int4`, `integer`, `serial`, `serial4` | `{"type": "integer", "format": "int32"}` |
+| `bigint`, `int8`, `bigserial`, `serial8` | `{"type": "integer", "format": "int64"}` |
+
+`id_type` results in an error when the table is not found in the DDL, has a composite primary key or no primary key, or its primary key type is not listed above.
 
 Each ID schema has the `x-id: true` extension. When the entry also has `key` and `value`, the enum schema has the `x-id-type` extension that refers to the ID schema name.
 
@@ -109,7 +114,9 @@ output-options:
           type: string
 ```
 
-`type-mapping` is optional. Without it, `format: uuid` is generated as `openapi_types.UUID` from `github.com/oapi-codegen/runtime`.
+`type-mapping` is optional. Without it, `format: uuid` is generated as `openapi_types.UUID` and the generated code requires `github.com/oapi-codegen/runtime`.
+
+With the default templates, ID schemas are generated as type aliases (`type UserID = string`, `type ProductID = int32`) and `x-id` / `x-id-type` are not used. Use custom templates to generate defined types or constructors from these extensions.
 
 Then, run the following command to generate the Go code:
 
@@ -124,6 +131,16 @@ For TypeScript, you can use [openapi-typescript](https://github.com/openapi-ts/o
 ```sh
 $ npx openapi-typescript ./example/openapi.generated.json -o ./example/openapi.generated.d.ts --enum
 ```
+
+ID schemas are generated as `components["schemas"]["UserID"]` (`string` for `uuid`, `number` for integer types). `x-id` and `x-id-type` are not used by openapi-typescript.
+
+## Development
+
+```sh
+$ bun install
+```
+
+`bun install` sets up a husky `pre-push` hook that regenerates `example/` with `make example` and fails if the generated files differ from the committed ones, then type-checks `example/openapi.generated.d.ts` and runs `go vet ./...` and `go test ./...`.
 
 ## Future Plans
 
