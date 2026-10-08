@@ -67,34 +67,48 @@ func TestNewSchemaGenerator_RequiresSchemaPathForIDs(t *testing.T) {
 func TestSchemaGenerator_Run_Example(t *testing.T) {
 	t.Parallel()
 
-	outputPath := filepath.Join(t.TempDir(), "openapi.generated.json")
-
-	a, err := NewSchemaGenerator(SchemaGeneratorOption{
-		Engine:     entity.EnginePostgres,
-		ConfigPath: "../../example/sqlenumgen.yml",
-		SourcePath: "../../example/master.sql",
-		SchemaPath: "../../example/schema.sql",
-		OutputPath: outputPath,
-	})
-	if err != nil {
-		t.Fatalf("NewSchemaGenerator() error = %v", err)
-	}
-
-	if err := a.Run(); err != nil {
-		t.Fatalf("Run() error = %v", err)
-	}
-
-	got, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	want, err := os.ReadFile("../../example/openapi.generated.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !bytes.Equal(got, want) {
-		t.Errorf("output =\n%s\nwant\n%s", got, want)
+	tests := []struct {
+		name       string
+		schemaPath string
+	}{
+		{name: "sqldef", schemaPath: "../../example/schema.sql"},
+		{name: "pg_dump", schemaPath: "testdata/schema.pg_dump.sql"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outputPath := filepath.Join(t.TempDir(), "openapi.generated.json")
+
+			a, err := NewSchemaGenerator(SchemaGeneratorOption{
+				Engine:     entity.EnginePostgres,
+				ConfigPath: "../../example/sqlenumgen.yml",
+				SourcePath: "../../example/master.sql",
+				SchemaPath: tt.schemaPath,
+				OutputPath: outputPath,
+			})
+			if err != nil {
+				t.Fatalf("NewSchemaGenerator() error = %v", err)
+			}
+
+			if err := a.Run(); err != nil {
+				t.Fatalf("Run() error = %v", err)
+			}
+
+			got, err := os.ReadFile(outputPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(got, want) {
+				t.Errorf("output =\n%s\nwant\n%s", got, want)
+			}
+		})
 	}
 }
