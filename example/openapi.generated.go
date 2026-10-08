@@ -45,12 +45,6 @@ func (e Products) Valid() bool {
 	}
 }
 
-// ProductID defines model for ProductID.
-type ProductID = int32
-
-// UserID defines model for UserID.
-type UserID = string
-
 // Menus defines model for menus.
 type Menus string
 

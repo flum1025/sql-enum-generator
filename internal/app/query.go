@@ -52,10 +52,9 @@ func (a *QueryGenerator) Run() error {
 
 	defer db.Close()
 
-	tables := a.config.EnumTables()
-	statements := make([]string, 0, len(tables))
+	statements := make([]string, 0, len(a.config.Tables))
 
-	for _, table := range tables {
+	for _, table := range a.config.Tables {
 		records, err := a.extract(db, table.Name)
 		if err != nil {
 			return fmt.Errorf("extract: %w", err)

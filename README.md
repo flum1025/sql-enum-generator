@@ -7,7 +7,6 @@ Currently only postgresql is supported.
 ## Features
 
 - Parses SQL INSERT statements and generates corresponding OpenAPI schemas
-- Generates ID schemas whose type is resolved from the primary key column in CREATE TABLE statements
 - Generated OpenAPI schemas can be utilized with other tools for type generation
 
 ## Quick Start
@@ -32,9 +31,9 @@ $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example
 
 For actual generation examples, please refer to the `example` directory in the repository.
 
-## ID Schemas
+## ID Type
 
-Add `id_type` to an entry of `tables` to generate an ID schema from the primary key of the table.
+Add optional `id_type` to a table to add the `x-id-type` extension to its enum schema.
 
 ```yaml
 version: "1"
@@ -43,57 +42,34 @@ tables:
     key: name
     value: id
     id_type: ProductID
-  - name: menus
-    key: name
-    value: id
-  - name: users
-    id_type: UserID
 ```
-
-| Key | Description |
-| --- | --- |
-| `name` | Table name. Schema-qualified and quoted names in DDL (e.g. `"public"."users"`) are matched by table name |
-| `key`, `value` | Columns for the enum. Optional, but must be specified together. Without them, no enum is generated and master data is not required |
-| `id_type` | ID schema name to generate. Optional |
-
-The config is validated on load, and the following result in an error:
-
-- Only one of `key` and `value` is specified
-- Neither `key`/`value` nor `id_type` is specified
-
-When `id_type` is configured, pass the DDL files with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `id_type` is not configured. Both sqldef-style DDL and `pg_dump -s` output are supported: statements other than `CREATE TABLE` / `ALTER TABLE` are ignored, and lines starting with `\` (psql meta-commands such as `\restrict`) are skipped.
-
-```sh
-$ go run github.com/flum1025/sql-enum-generator generate --source-path ./example/master.sql --schema-path ./example/schema.sql --output-path ./example/openapi.generated.json --config ./example/sqlenumgen.yml
-```
-
-The primary key is read from any of the following, and its type is mapped as follows.
-
-- Column-level `PRIMARY KEY` in `CREATE TABLE`
-- Table-level `PRIMARY KEY (...)` in `CREATE TABLE`
-- `ALTER TABLE [ONLY] ... ADD [CONSTRAINT name] PRIMARY KEY (...)` (before or after `CREATE TABLE`)
-
-
-| Column type | Schema |
-| --- | --- |
-| `uuid` | `{"type": "string", "format": "uuid"}` |
-| `int`, `int4`, `integer`, `serial`, `serial4` (including `integer` with a sequence default in `pg_dump` output) | `{"type": "integer", "format": "int32"}` |
-| `bigint`, `int8`, `bigserial`, `serial8` | `{"type": "integer", "format": "int64"}` |
-
-`id_type` results in an error when the table is not found in the DDL, has a composite primary key or no primary key, or its primary key type is not listed above.
-
-Each ID schema has the `x-id: true` extension. When the entry also has `key` and `value`, the enum schema has the `x-id-type` extension that refers to the ID schema name.
 
 ```json
-{
-  "ProductID": { "type": "integer", "format": "int32", "x-id": true },
-  "UserID": { "type": "string", "format": "uuid", "x-id": true },
-  "products": {
-    "enum": ["1", "2", "3"],
-    "type": "integer",
-    "x-enum-varnames": ["ProductA", "ProductB", "ProductC"],
-    "x-id-type": "ProductID"
-  }
+"products": {
+  "enum": ["1", "2", "3"],
+  "type": "integer",
+  "x-enum-varnames": ["ProductA", "ProductB", "ProductC"],
+  "x-id-type": "ProductID"
+}
+```
+
+`x-id-type` is not used by the default templates of oapi-codegen or by openapi-typescript. It allows custom templates to generate conversions from an enum to the ID type defined in your code. For example, with oapi-codegen `user-templates`, appending the following to `constants.tmpl`:
+
+```
+{{range $Enum := .EnumDefinitions}}
+{{- with index $Enum.Schema.OAPISchema.Extensions "x-id-type"}}
+func (v {{$Enum.TypeName}}) {{.}}() {{.}} {
+	return {{.}}(v)
+}
+{{end}}
+{{- end}}
+```
+
+generates:
+
+```go
+func (v Products) ProductID() ProductID {
+	return ProductID(v)
 }
 ```
 
@@ -112,16 +88,7 @@ compatibility:
   always-prefix-enum-values: true
 output-options:
   skip-prune: true
-  type-mapping:
-    string:
-      formats:
-        uuid:
-          type: string
 ```
-
-`type-mapping` is optional. Without it, `format: uuid` is generated as `openapi_types.UUID` and the generated code requires `github.com/oapi-codegen/runtime`.
-
-With the default templates, ID schemas are generated as type aliases (`type UserID = string`, `type ProductID = int32`) and `x-id` / `x-id-type` are not used. Use custom templates to generate defined types or constructors from these extensions.
 
 Then, run the following command to generate the Go code:
 
@@ -136,8 +103,6 @@ For TypeScript, you can use [openapi-typescript](https://github.com/openapi-ts/o
 ```sh
 $ npx openapi-typescript ./example/openapi.generated.json -o ./example/openapi.generated.d.ts --enum
 ```
-
-ID schemas are generated as `components["schemas"]["UserID"]` (`string` for `uuid`, `number` for integer types). `x-id` and `x-id-type` are not used by openapi-typescript.
 
 ## Development
 

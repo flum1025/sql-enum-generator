@@ -7,10 +7,6 @@ export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** Format: int32 */
-        ProductID: number;
-        /** Format: uuid */
-        UserID: string;
         /** @enum {string} */
         menus: Menus;
         /** @enum {integer} */
