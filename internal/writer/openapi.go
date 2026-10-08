@@ -63,13 +63,19 @@ func (w *OpenAPIWriter) Write(
 						}
 					}()
 
+					extensions := map[string]any{
+						"x-enum-varnames": lo.ToAnySlice(enumDef.Keys),
+					}
+
+					if table.IDType != "" {
+						extensions["x-id-type"] = table.IDType
+					}
+
 					return enumDef.Name, openapi3.SchemaOrRef{
 						Schema: &openapi3.Schema{
-							Type: lo.ToPtr(schemaType),
-							Enum: lo.ToAnySlice(enumDef.Values),
-							MapOfAnything: map[string]any{
-								"x-enum-varnames": lo.ToAnySlice(enumDef.Keys),
-							},
+							Type:          lo.ToPtr(schemaType),
+							Enum:          lo.ToAnySlice(enumDef.Values),
+							MapOfAnything: extensions,
 						},
 					}
 				},

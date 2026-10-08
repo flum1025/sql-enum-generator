@@ -31,6 +31,48 @@ $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example
 
 For actual generation examples, please refer to the `example` directory in the repository.
 
+## ID Type
+
+Add optional `id_type` to a table to add the `x-id-type` extension to its enum schema.
+
+```yaml
+version: "1"
+tables:
+  - name: products
+    key: name
+    value: id
+    id_type: ProductID
+```
+
+```json
+"products": {
+  "enum": ["1", "2", "3"],
+  "type": "integer",
+  "x-enum-varnames": ["ProductA", "ProductB", "ProductC"],
+  "x-id-type": "ProductID"
+}
+```
+
+`x-id-type` is not used by the default templates of oapi-codegen or by openapi-typescript. It allows custom templates to generate conversions from an enum to the ID type defined in your code. For example, with oapi-codegen `user-templates`, appending the following to `constants.tmpl`:
+
+```
+{{range $Enum := .EnumDefinitions}}
+{{- with index $Enum.Schema.OAPISchema.Extensions "x-id-type"}}
+func (v {{$Enum.TypeName}}) {{.}}() {{.}} {
+	return {{.}}(v)
+}
+{{end}}
+{{- end}}
+```
+
+generates:
+
+```go
+func (v Products) ProductID() ProductID {
+	return ProductID(v)
+}
+```
+
 ## Language-Specific Usage Examples
 
 ### Go
@@ -61,6 +103,14 @@ For TypeScript, you can use [openapi-typescript](https://github.com/openapi-ts/o
 ```sh
 $ npx openapi-typescript ./example/openapi.generated.json -o ./example/openapi.generated.d.ts --enum
 ```
+
+## Development
+
+```sh
+$ bun install
+```
+
+`bun install` sets up a husky `pre-push` hook that regenerates `example/` with `make example` and fails if the generated files differ from the committed ones, then type-checks `example/openapi.generated.d.ts` and runs `go vet ./...` and `go test ./...`.
 
 ## Future Plans
 

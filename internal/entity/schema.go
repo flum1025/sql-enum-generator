@@ -13,9 +13,10 @@ type Config struct {
 }
 
 type SchemaTable struct {
-	Name  string `yaml:"name"`
-	Key   string `yaml:"key"`
-	Value string `yaml:"value"`
+	Name   string `yaml:"name"`
+	Key    string `yaml:"key"`
+	Value  string `yaml:"value"`
+	IDType string `yaml:"id_type"`
 }
 
 func NewConfigFromFile(

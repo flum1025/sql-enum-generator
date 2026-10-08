@@ -3,6 +3,7 @@ tables:
   - name: products
     key: name
     value: id
+    id_type: ProductID
   - name: menus
     key: name
     value: id
