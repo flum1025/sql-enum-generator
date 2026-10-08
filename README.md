@@ -61,18 +61,23 @@ The config is validated on load, and the following result in an error:
 - Only one of `key` and `value` is specified
 - Neither `key`/`value` nor `id_type` is specified
 
-When `id_type` is configured, pass the DDL files (CREATE TABLE statements) with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `id_type` is not configured.
+When `id_type` is configured, pass the DDL files with `--schema-path`. Wildcards can be used. `--schema-path` is ignored when `id_type` is not configured. Both sqldef-style DDL and `pg_dump -s` output are supported: statements other than `CREATE TABLE` / `ALTER TABLE` are ignored, and lines starting with `\` (psql meta-commands such as `\restrict`) are skipped.
 
 ```sh
 $ go run github.com/flum1025/sql-enum-generator generate --source-path ./example/master.sql --schema-path ./example/schema.sql --output-path ./example/openapi.generated.json --config ./example/sqlenumgen.yml
 ```
 
-The primary key is read from table-level `PRIMARY KEY (...)` or column-level `PRIMARY KEY`, and its type is mapped as follows.
+The primary key is read from any of the following, and its type is mapped as follows.
+
+- Column-level `PRIMARY KEY` in `CREATE TABLE`
+- Table-level `PRIMARY KEY (...)` in `CREATE TABLE`
+- `ALTER TABLE [ONLY] ... ADD [CONSTRAINT name] PRIMARY KEY (...)` (before or after `CREATE TABLE`)
+
 
 | Column type | Schema |
 | --- | --- |
 | `uuid` | `{"type": "string", "format": "uuid"}` |
-| `int`, `int4`, `integer`, `serial`, `serial4` | `{"type": "integer", "format": "int32"}` |
+| `int`, `int4`, `integer`, `serial`, `serial4` (including `integer` with a sequence default in `pg_dump` output) | `{"type": "integer", "format": "int32"}` |
 | `bigint`, `int8`, `bigserial`, `serial8` | `{"type": "integer", "format": "int64"}` |
 
 `id_type` results in an error when the table is not found in the DDL, has a composite primary key or no primary key, or its primary key type is not listed above.
