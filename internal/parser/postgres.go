@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"fmt"
 	"strconv"
+	"strings"
 
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 	"github.com/samber/lo"
@@ -124,21 +124,40 @@ func (p *PostgresParser) Parse(
 func (p *PostgresParser) ParseDefinitions(
 	source string,
 ) (TableDefinitions, error) {
-	tree, err := pg_query.Parse(source)
+	tree, err := pg_query.Parse(stripMetaCommands(source))
 	if err != nil {
 		return nil, err
 	}
 
 	definitions := make(TableDefinitions, 0, len(tree.Stmts))
+	alteredPrimaryKeys := make(map[string][]string)
 
 	for _, stmt := range tree.Stmts {
+		if alterStmt := stmt.Stmt.GetAlterTableStmt(); alterStmt != nil {
+			for _, cmd := range alterStmt.Cmds {
+				alterCmd := cmd.GetAlterTableCmd()
+				if alterCmd == nil || alterCmd.Subtype != pg_query.AlterTableType_AT_AddConstraint {
+					continue
+				}
+
+				if isPrimaryKeyConstraint(alterCmd.Def) {
+					alteredPrimaryKeys[alterStmt.Relation.Relname] = append(
+						alteredPrimaryKeys[alterStmt.Relation.Relname],
+						constraintKeys(alterCmd.Def.GetConstraint())...,
+					)
+				}
+			}
+
+			continue
+		}
+
 		createStmt := stmt.Stmt.GetCreateStmt()
 		if createStmt == nil {
 			continue
 		}
 
 		columns := make([]ColumnDefinition, 0, len(createStmt.TableElts))
-		primaryKeyNames := make([]string, 0)
+		primaryKeys := make([]string, 0)
 
 		for _, elt := range createStmt.TableElts {
 			if columnDef := elt.GetColumnDef(); columnDef != nil {
@@ -148,45 +167,53 @@ func (p *PostgresParser) ParseDefinitions(
 				})
 
 				if lo.SomeBy(columnDef.Constraints, isPrimaryKeyConstraint) {
-					primaryKeyNames = append(primaryKeyNames, columnDef.Colname)
+					primaryKeys = append(primaryKeys, columnDef.Colname)
 				}
 
 				continue
 			}
 
 			if isPrimaryKeyConstraint(elt) {
-				primaryKeyNames = append(
-					primaryKeyNames,
-					lo.Map(
-						elt.GetConstraint().Keys,
-						func(key *pg_query.Node, _ int) string {
-							return key.GetString_().Sval
-						},
-					)...,
-				)
+				primaryKeys = append(primaryKeys, constraintKeys(elt.GetConstraint())...)
 			}
-		}
-
-		primaryKeys := make([]ColumnDefinition, 0, len(primaryKeyNames))
-
-		for _, name := range primaryKeyNames {
-			column, ok := lo.Find(columns, func(c ColumnDefinition) bool {
-				return c.Name == name
-			})
-			if !ok {
-				return nil, fmt.Errorf("primary key column not found: %s.%s", createStmt.Relation.Relname, name)
-			}
-
-			primaryKeys = append(primaryKeys, column)
 		}
 
 		definitions = append(definitions, TableDefinition{
 			Name:        createStmt.Relation.Relname,
+			Columns:     columns,
 			PrimaryKeys: primaryKeys,
 		})
 	}
 
+	for i, definition := range definitions {
+		definitions[i].PrimaryKeys = append(definition.PrimaryKeys, alteredPrimaryKeys[definition.Name]...)
+	}
+
 	return definitions, nil
+}
+
+func stripMetaCommands(source string) string {
+	lines := strings.Split(source, "\n")
+
+	return strings.Join(
+		lo.Map(lines, func(line string, _ int) string {
+			if strings.HasPrefix(line, `\`) {
+				return ""
+			}
+
+			return line
+		}),
+		"\n",
+	)
+}
+
+func constraintKeys(constraint *pg_query.Constraint) []string {
+	return lo.Map(
+		constraint.GetKeys(),
+		func(key *pg_query.Node, _ int) string {
+			return key.GetString_().Sval
+		},
+	)
 }
 
 func isPrimaryKeyConstraint(node *pg_query.Node) bool {

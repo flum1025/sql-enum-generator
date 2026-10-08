@@ -116,7 +116,8 @@ type ColumnDefinition struct {
 
 type TableDefinition struct {
 	Name        string
-	PrimaryKeys []ColumnDefinition
+	Columns     []ColumnDefinition
+	PrimaryKeys []string
 }
 
 type TableDefinitions []TableDefinition
@@ -133,7 +134,12 @@ func (t TableDefinitions) ToID(def entity.SchemaTable) (ID, error) {
 		return ID{}, fmt.Errorf("table %s must have exactly one primary key column, got %d", def.Name, len(table.PrimaryKeys))
 	}
 
-	pk := table.PrimaryKeys[0]
+	pk, ok := lo.Find(table.Columns, func(column ColumnDefinition) bool {
+		return column.Name == table.PrimaryKeys[0]
+	})
+	if !ok {
+		return ID{}, fmt.Errorf("table %s: primary key column not found: %s", def.Name, table.PrimaryKeys[0])
+	}
 
 	idType, err := toIDType(pk.TypeName)
 	if err != nil {

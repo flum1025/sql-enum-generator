@@ -83,6 +83,100 @@ ALTER TABLE "public"."menus" ADD CONSTRAINT "menus_id_key" UNIQUE (id);`,
 			want: ID{Name: "MenuID", Table: "menus", Type: IDTypeInt32},
 		},
 		{
+			name: "primary key added by alter table only",
+			source: `CREATE TABLE public.clinics (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    en_name character varying(50) NOT NULL
+);
+
+ALTER TABLE ONLY public.clinics
+    ADD CONSTRAINT clinics_pkey PRIMARY KEY (id);`,
+			def:  entity.SchemaTable{Name: "clinics", IDType: "ClinicID"},
+			want: ID{Name: "ClinicID", Table: "clinics", Type: IDTypeUUID},
+		},
+		{
+			name: "primary key added by alter table before create table",
+			source: `ALTER TABLE "public"."clinics" ADD PRIMARY KEY ("id");
+CREATE TABLE "public"."clinics" ("id" UUID NOT NULL);`,
+			def:  entity.SchemaTable{Name: "clinics", IDType: "ClinicID"},
+			want: ID{Name: "ClinicID", Table: "clinics", Type: IDTypeUUID},
+		},
+		{
+			name: "serial as integer with sequence default",
+			source: `CREATE TABLE public.richmenu_types (
+    id integer NOT NULL,
+    ja_name character varying(32) NOT NULL
+);
+
+CREATE SEQUENCE public.richmenu_types_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.richmenu_types_id_seq OWNED BY public.richmenu_types.id;
+
+ALTER TABLE ONLY public.richmenu_types ALTER COLUMN id SET DEFAULT nextval('public.richmenu_types_id_seq'::regclass);
+
+ALTER TABLE ONLY public.richmenu_types
+    ADD CONSTRAINT richmenu_types_pkey PRIMARY KEY (id);`,
+			def:  entity.SchemaTable{Name: "richmenu_types", IDType: "RichMenuTypeID"},
+			want: ID{Name: "RichMenuTypeID", Table: "richmenu_types", Type: IDTypeInt32},
+		},
+		{
+			name: "psql meta commands and other statements",
+			source: `\restrict abcdef
+SET statement_timeout = 0;
+SELECT pg_catalog.set_config('search_path', '', false);
+CREATE FUNCTION public.set_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+CREATE TABLE public.users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+COMMENT ON TABLE public.users IS 'users';
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_updated_at_key UNIQUE (updated_at);
+CREATE INDEX users_updated_at_idx ON public.users USING btree (updated_at);
+CREATE TRIGGER users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+ALTER TABLE ONLY public.unknown_table
+    ADD CONSTRAINT unknown_table_pkey PRIMARY KEY (id);
+\unrestrict abcdef`,
+			def:  entity.SchemaTable{Name: "users", IDType: "UserID"},
+			want: ID{Name: "UserID", Table: "users", Type: IDTypeUUID},
+		},
+		{
+			name:    "alter table targets unknown configured table",
+			source:  `ALTER TABLE ONLY public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);`,
+			def:     entity.SchemaTable{Name: "users", IDType: "UserID"},
+			wantErr: "table not found: users",
+		},
+		{
+			name: "composite primary key added by alter table",
+			source: `CREATE TABLE public.user_clinics (user_id uuid NOT NULL, clinic_id uuid NOT NULL);
+ALTER TABLE ONLY public.user_clinics
+    ADD CONSTRAINT user_clinics_pkey PRIMARY KEY (user_id, clinic_id);`,
+			def:     entity.SchemaTable{Name: "user_clinics", IDType: "UserClinicID"},
+			wantErr: "table user_clinics must have exactly one primary key column, got 2",
+		},
+		{
+			name: "primary key column not found",
+			source: `CREATE TABLE public.users (uuid uuid NOT NULL);
+ALTER TABLE ONLY public.users ADD CONSTRAINT users_pkey PRIMARY KEY (id);`,
+			def:     entity.SchemaTable{Name: "users", IDType: "UserID"},
+			wantErr: "table users: primary key column not found: id",
+		},
+		{
 			name:    "composite primary key",
 			source:  `CREATE TABLE "public"."user_clinics" ("user_id" UUID NOT NULL, "clinic_id" UUID NOT NULL, PRIMARY KEY ("user_id", "clinic_id"));`,
 			def:     entity.SchemaTable{Name: "user_clinics", IDType: "UserClinicID"},
