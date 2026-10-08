@@ -1,0 +1,31 @@
+set -eu
+
+step() {
+  printf '\n==> %s\n' "$1"
+}
+
+step "make example"
+mise exec -- make example
+
+step "check example/ is up to date"
+untracked=$(git ls-files --others --exclude-standard -- example/)
+if ! git diff --exit-code -- example/ || [ -n "$untracked" ]; then
+  [ -n "$untracked" ] && printf 'untracked files:\n%s\n' "$untracked"
+  echo "example/ is out of date. Commit the regenerated files." >&2
+  exit 1
+fi
+
+step "tsc --noEmit example/openapi.generated.d.ts"
+if [ ! -x node_modules/.bin/tsc ]; then
+  echo "tsc not found. Run bun install." >&2
+  exit 1
+fi
+node_modules/.bin/tsc --noEmit example/openapi.generated.d.ts
+
+step "go vet ./..."
+mise exec -- go vet ./...
+
+step "go test ./..."
+mise exec -- go test ./...
+
+printf '\npre-push checks passed\n'
